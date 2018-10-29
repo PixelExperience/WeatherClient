@@ -34,6 +34,8 @@ import static org.pixelexperience.weather.client.WeatherData.WEATHER_UPDATE_ERRO
 public class WeatherService extends JobService {
     private static final String TAG = "WeatherService";
     private GoogleApiClient mGoogleApiClient;
+    boolean isRunning = false;
+    boolean jobCancelled = false;
 
     public static void scheduleUpdate(Context context, Boolean onBoot) {
         JobScheduler jobScheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
@@ -58,74 +60,99 @@ public class WeatherService extends JobService {
 
     @Override
     public boolean onStopJob(JobParameters jobParameters) {
-        return false;
+        jobCancelled = true;
+        WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
+        boolean needsReschedule = isRunning;
+        jobFinished(jobParameters, needsReschedule);
+        return needsReschedule;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public boolean onStartJob(final JobParameters jobParameters) {
         if (DEBUG) Log.d(TAG, "onStartJob");
-        WeatherData.setUpdateStatus(this, WEATHER_UPDATE_RUNNING);
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(Awareness.API)
-                .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
-                    @SuppressLint("MissingPermission")
-                    @Override
-                    public void onConnected(@Nullable Bundle bundle) {
-                        if (DEBUG) Log.d(TAG, "onConnected");
-                        Awareness.SnapshotApi.getWeather(mGoogleApiClient).setResultCallback(new ResultCallback<WeatherResult>() {
+        isRunning = true;
+        loadWeatherData(jobParameters);
+        return isRunning;
+    }
+
+    private void loadWeatherData(final JobParameters jobParameters) {
+        new Thread(new Runnable() {
+            @SuppressWarnings("deprecation")
+            public void run() {
+                WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_RUNNING);
+                mGoogleApiClient = new GoogleApiClient.Builder(WeatherService.this)
+                        .addApi(Awareness.API)
+                        .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
+                            @SuppressLint("MissingPermission")
                             @Override
-                            public void onResult(@NonNull final WeatherResult weatherResult) {
-                                if (DEBUG) Log.d(TAG, "WeatherResult: onResult");
-                                if (!weatherResult.getStatus().isSuccess()) {
-                                    if (DEBUG) Log.d(TAG, "Could not get weather.");
-                                    scheduleUpdate(WeatherService.this, false);
-                                    jobFinished(jobParameters, false);
+                            public void onConnected(@Nullable Bundle bundle) {
+                                if (jobCancelled)
                                     return;
-                                }
-                                Awareness.SnapshotApi.getLocation(mGoogleApiClient).setResultCallback(new ResultCallback<LocationResult>() {
+                                if (DEBUG) Log.d(TAG, "onConnected");
+                                Awareness.SnapshotApi.getWeather(mGoogleApiClient).setResultCallback(new ResultCallback<WeatherResult>() {
                                     @Override
-                                    public void onResult(@NonNull LocationResult locationResult) {
-                                        if (DEBUG) Log.d(TAG, "LocationResult: onResult");
-                                        Calendar currentCalendar = Calendar.getInstance();
-                                        int currentHour = currentCalendar.get(Calendar.HOUR_OF_DAY);
-                                        String sunCondition = (currentHour >= 7 && currentHour <= 18) ? "d" : "n";
-                                        if (!locationResult.getStatus().isSuccess()) {
-                                            if (DEBUG) Log.d(TAG, "Could not get user location");
-                                        } else {
-                                            TimeZone tz = TimeZone.getDefault();
-                                            Location location = new Location(locationResult.getLocation().getLatitude(), locationResult.getLocation().getLongitude());
-                                            SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(location, tz.getID());
-                                            Calendar officialSunset = calculator.getOfficialSunsetCalendarForDate(currentCalendar);
-                                            if (currentCalendar.getTimeInMillis() >= officialSunset.getTimeInMillis()) {
-                                                sunCondition = "n";
-                                            } else {
-                                                sunCondition = "d";
-                                            }
+                                    public void onResult(@NonNull final WeatherResult weatherResult) {
+                                        if (jobCancelled)
+                                            return;
+                                        if (DEBUG) Log.d(TAG, "WeatherResult: onResult");
+                                        if (!weatherResult.getStatus().isSuccess()) {
+                                            if (DEBUG) Log.d(TAG, "Could not get weather.");
+                                            WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
+                                            scheduleUpdate(WeatherService.this, false);
+                                            isRunning = false;
+                                            jobFinished(jobParameters, false);
+                                            return;
                                         }
-                                        Weather weather = weatherResult.getWeather();
-                                        String conditions = sunCondition + "," + Arrays.toString(weather.getConditions()).replace("[", "").replace("]", "").replace(" ", "");
-                                        WeatherInfo weatherInfo = new WeatherInfo(WEATHER_UPDATE_SUCCESS, conditions, Math.round((weather.getTemperature(Weather.CELSIUS))), Math.round((weather.getTemperature(Weather.FAHRENHEIT))));
-                                        WeatherData.setWeatherData(WeatherService.this, weatherInfo);
-                                        if (DEBUG) Log.d(TAG, weatherInfo.toString());
-                                        scheduleUpdate(WeatherService.this, false);
-                                        jobFinished(jobParameters, false);
+                                        Awareness.SnapshotApi.getLocation(mGoogleApiClient).setResultCallback(new ResultCallback<LocationResult>() {
+                                            @Override
+                                            public void onResult(@NonNull LocationResult locationResult) {
+                                                if (jobCancelled)
+                                                    return;
+                                                if (DEBUG) Log.d(TAG, "LocationResult: onResult");
+                                                Calendar currentCalendar = Calendar.getInstance();
+                                                int currentHour = currentCalendar.get(Calendar.HOUR_OF_DAY);
+                                                String sunCondition = (currentHour >= 7 && currentHour <= 18) ? "d" : "n";
+                                                if (!locationResult.getStatus().isSuccess()) {
+                                                    if (DEBUG) Log.d(TAG, "Could not get user location");
+                                                } else {
+                                                    TimeZone tz = TimeZone.getDefault();
+                                                    Location location = new Location(locationResult.getLocation().getLatitude(), locationResult.getLocation().getLongitude());
+                                                    SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(location, tz.getID());
+                                                    Calendar officialSunset = calculator.getOfficialSunsetCalendarForDate(currentCalendar);
+                                                    if (currentCalendar.getTimeInMillis() >= officialSunset.getTimeInMillis()) {
+                                                        sunCondition = "n";
+                                                    } else {
+                                                        sunCondition = "d";
+                                                    }
+                                                }
+                                                Weather weather = weatherResult.getWeather();
+                                                String conditions = sunCondition + "," + Arrays.toString(weather.getConditions()).replace("[", "").replace("]", "").replace(" ", "");
+                                                WeatherInfo weatherInfo = new WeatherInfo(WEATHER_UPDATE_SUCCESS, conditions, Math.round((weather.getTemperature(Weather.CELSIUS))), Math.round((weather.getTemperature(Weather.FAHRENHEIT))));
+                                                WeatherData.setWeatherData(WeatherService.this, weatherInfo);
+                                                if (DEBUG) Log.d(TAG, weatherInfo.toString());
+                                                scheduleUpdate(WeatherService.this, false);
+                                                isRunning = false;
+                                                jobFinished(jobParameters, false);
+                                            }
+                                        });
                                     }
                                 });
                             }
-                        });
-                    }
 
-                    @Override
-                    public void onConnectionSuspended(int i) {
-                        if (DEBUG) Log.d(TAG, "onConnectionSuspended");
-                        WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
-                        scheduleUpdate(WeatherService.this, false);
-                        jobFinished(jobParameters, false);
-                    }
-                })
-                .build();
-        mGoogleApiClient.connect();
-        return true;
+                            @Override
+                            public void onConnectionSuspended(int i) {
+                                if (jobCancelled)
+                                    return;
+                                if (DEBUG) Log.d(TAG, "onConnectionSuspended");
+                                WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
+                                scheduleUpdate(WeatherService.this, false);
+                                isRunning = false;
+                                jobFinished(jobParameters, false);
+                            }
+                        })
+                        .build();
+                mGoogleApiClient.connect();
+            }
+        }).start();
     }
 }
