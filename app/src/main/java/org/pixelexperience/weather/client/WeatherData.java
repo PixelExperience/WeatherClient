@@ -7,6 +7,10 @@ import android.preference.PreferenceManager;
 
 class WeatherData {
     private static final String PREF_KEY_WEATHER_DATA = "weather_data";
+    static final int WEATHER_UPDATE_SUCCESS = 0; // Success
+    static final int WEATHER_UPDATE_RUNNING = 1; // Update running
+    static final int WEATHER_UPDATE_NO_DATA = 2; // On boot event
+    static final int WEATHER_UPDATE_ERROR = 3; // Error
 
     static WeatherInfo getWeatherData(Context context) {
         SharedPreferences prefs = PreferenceManager
@@ -25,12 +29,12 @@ class WeatherData {
         WeatherContentProvider.notify(context);
     }
 
-    static void setUpdateError(Context context, boolean error) {
+    static void setUpdateStatus(Context context, int status) {
         WeatherInfo weatherInfo = getWeatherData(context);
         if (weatherInfo == null) {
-            weatherInfo = new WeatherInfo(error ? 0 : 1, "", 0, 0);
+            weatherInfo = new WeatherInfo(status, "", 0, 0);
         } else {
-            weatherInfo.setStatus(error ? 0 : 1);
+            weatherInfo.setStatus(status);
         }
         setWeatherData(context, weatherInfo);
     }

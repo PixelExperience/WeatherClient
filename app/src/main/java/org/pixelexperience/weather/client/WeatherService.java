@@ -25,8 +25,11 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.TimeZone;
 
-import static org.pixelexperience.weather.client.Constants.DEBUG;
-import static org.pixelexperience.weather.client.Constants.UPDATE_INTERVAL;
+import static org.pixelexperience.weather.client.Constants.*;
+import static org.pixelexperience.weather.client.WeatherData.WEATHER_UPDATE_SUCCESS;
+import static org.pixelexperience.weather.client.WeatherData.WEATHER_UPDATE_RUNNING;
+import static org.pixelexperience.weather.client.WeatherData.WEATHER_UPDATE_NO_DATA;
+import static org.pixelexperience.weather.client.WeatherData.WEATHER_UPDATE_ERROR;
 
 public class WeatherService extends JobService {
     private static final String TAG = "WeatherService";
@@ -40,6 +43,7 @@ public class WeatherService extends JobService {
         }
         jobScheduler.cancelAll();
         if (onBoot) {
+            WeatherData.setUpdateStatus(context, WEATHER_UPDATE_NO_DATA);
             jobScheduler.schedule(new JobInfo.Builder(0, new ComponentName(context, WeatherService.class))
                     .setPeriodic(UPDATE_INTERVAL)
                     .setPersisted(true)
@@ -61,7 +65,7 @@ public class WeatherService extends JobService {
     @Override
     public boolean onStartJob(final JobParameters jobParameters) {
         if (DEBUG) Log.d(TAG, "onStartJob");
-        WeatherData.setUpdateError(this, false);
+        WeatherData.setUpdateStatus(this, WEATHER_UPDATE_RUNNING);
         mGoogleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(Awareness.API)
                 .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
@@ -101,7 +105,7 @@ public class WeatherService extends JobService {
                                         }
                                         Weather weather = weatherResult.getWeather();
                                         String conditions = sunCondition + "," + Arrays.toString(weather.getConditions()).replace("[", "").replace("]", "").replace(" ", "");
-                                        WeatherInfo weatherInfo = new WeatherInfo(1, conditions, Math.round((weather.getTemperature(Weather.CELSIUS))), Math.round((weather.getTemperature(Weather.FAHRENHEIT))));
+                                        WeatherInfo weatherInfo = new WeatherInfo(WEATHER_UPDATE_SUCCESS, conditions, Math.round((weather.getTemperature(Weather.CELSIUS))), Math.round((weather.getTemperature(Weather.FAHRENHEIT))));
                                         WeatherData.setWeatherData(WeatherService.this, weatherInfo);
                                         if (DEBUG) Log.d(TAG, weatherInfo.toString());
                                         scheduleUpdate(WeatherService.this, false);
@@ -115,7 +119,7 @@ public class WeatherService extends JobService {
                     @Override
                     public void onConnectionSuspended(int i) {
                         if (DEBUG) Log.d(TAG, "onConnectionSuspended");
-                        WeatherData.setUpdateError(WeatherService.this, true);
+                        WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
                         scheduleUpdate(WeatherService.this, false);
                         jobFinished(jobParameters, false);
                     }
