@@ -13,12 +13,17 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.google.android.gms.awareness.Awareness;
+import com.google.android.gms.awareness.snapshot.LocationResult;
 import com.google.android.gms.awareness.snapshot.WeatherResult;
 import com.google.android.gms.awareness.state.Weather;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
+import com.luckycatlabs.sunrisesunset.SunriseSunsetCalculator;
+import com.luckycatlabs.sunrisesunset.dto.Location;
 
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.TimeZone;
 
 import static org.pixelexperience.weather.client.Constants.DEBUG;
 import static org.pixelexperience.weather.client.Constants.UPDATE_INTERVAL;
@@ -66,21 +71,43 @@ public class WeatherService extends JobService {
                         if (DEBUG) Log.d(TAG, "onConnected");
                         Awareness.SnapshotApi.getWeather(mGoogleApiClient).setResultCallback(new ResultCallback<WeatherResult>() {
                             @Override
-                            public void onResult(@NonNull WeatherResult weatherResult) {
-                                if (DEBUG) Log.d(TAG, "onResult");
+                            public void onResult(@NonNull final WeatherResult weatherResult) {
+                                if (DEBUG) Log.d(TAG, "WeatherResult: onResult");
                                 if (!weatherResult.getStatus().isSuccess()) {
                                     if (DEBUG) Log.d(TAG, "Could not get weather.");
                                     scheduleUpdate(WeatherService.this, false);
                                     jobFinished(jobParameters, false);
                                     return;
                                 }
-                                Weather weather = weatherResult.getWeather();
-                                String conditions = Arrays.toString(weather.getConditions()).replace("[", "").replace("]", "").replace(" ", "");
-                                WeatherInfo weatherInfo = new WeatherInfo(1, conditions, Math.round((weather.getTemperature(Weather.CELSIUS))), Math.round((weather.getTemperature(Weather.FAHRENHEIT))));
-                                WeatherData.setWeatherData(WeatherService.this, weatherInfo);
-                                if (DEBUG) Log.d(TAG, weatherInfo.toString());
-                                scheduleUpdate(WeatherService.this, false);
-                                jobFinished(jobParameters, false);
+                                Awareness.SnapshotApi.getLocation(mGoogleApiClient).setResultCallback(new ResultCallback<LocationResult>() {
+                                    @Override
+                                    public void onResult(@NonNull LocationResult locationResult) {
+                                        if (DEBUG) Log.d(TAG, "LocationResult: onResult");
+                                        Calendar currentCalendar = Calendar.getInstance();
+                                        int currentHour = currentCalendar.get(Calendar.HOUR_OF_DAY);
+                                        String sunCondition = (currentHour >= 7 && currentHour <= 18) ? "d" : "n";
+                                        if (!locationResult.getStatus().isSuccess()) {
+                                            if (DEBUG) Log.d(TAG, "Could not get user location");
+                                        } else {
+                                            TimeZone tz = TimeZone.getDefault();
+                                            Location location = new Location(locationResult.getLocation().getLatitude(), locationResult.getLocation().getLongitude());
+                                            SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(location, tz.getID());
+                                            Calendar officialSunset = calculator.getOfficialSunsetCalendarForDate(currentCalendar);
+                                            if (currentCalendar.getTimeInMillis() >= officialSunset.getTimeInMillis()) {
+                                                sunCondition = "n";
+                                            } else {
+                                                sunCondition = "d";
+                                            }
+                                        }
+                                        Weather weather = weatherResult.getWeather();
+                                        String conditions = sunCondition + "," + Arrays.toString(weather.getConditions()).replace("[", "").replace("]", "").replace(" ", "");
+                                        WeatherInfo weatherInfo = new WeatherInfo(1, conditions, Math.round((weather.getTemperature(Weather.CELSIUS))), Math.round((weather.getTemperature(Weather.FAHRENHEIT))));
+                                        WeatherData.setWeatherData(WeatherService.this, weatherInfo);
+                                        if (DEBUG) Log.d(TAG, weatherInfo.toString());
+                                        scheduleUpdate(WeatherService.this, false);
+                                        jobFinished(jobParameters, false);
+                                    }
+                                });
                             }
                         });
                     }
