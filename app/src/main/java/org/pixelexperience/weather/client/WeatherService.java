@@ -40,7 +40,7 @@ public class WeatherService extends JobService {
     public static void scheduleUpdate(Context context, Boolean onBoot) {
         JobScheduler jobScheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
         if (jobScheduler == null) {
-            if (DEBUG) Log.d(TAG, "Unable to get JobScheduler service");
+            Log.d(TAG, "Unable to get JobScheduler service");
             return;
         }
         jobScheduler.cancelAll();
@@ -71,7 +71,11 @@ public class WeatherService extends JobService {
     public boolean onStartJob(final JobParameters jobParameters) {
         if (DEBUG) Log.d(TAG, "onStartJob");
         isRunning = true;
-        loadWeatherData(jobParameters);
+        try{
+            loadWeatherData(jobParameters);
+        }catch (Exception e){
+            e.printStackTrace();
+        }
         return isRunning;
     }
 
