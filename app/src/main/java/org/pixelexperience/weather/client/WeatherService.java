@@ -18,6 +18,7 @@ import com.google.android.gms.gcm.GcmNetworkManager;
 import com.google.android.gms.gcm.GcmTaskService;
 import com.google.android.gms.gcm.OneoffTask;
 import com.google.android.gms.gcm.PeriodicTask;
+import com.google.android.gms.gcm.Task;
 import com.google.android.gms.gcm.TaskParams;
 import com.luckycatlabs.sunrisesunset.SunriseSunsetCalculator;
 import com.luckycatlabs.sunrisesunset.dto.Location;
@@ -53,6 +54,7 @@ public class WeatherService extends GcmTaskService {
                     .setExecutionWindow(5, 15)
                     .setUpdateCurrent(true)
                     .setPersisted(true)
+                    .setRequiredNetwork(Task.NETWORK_STATE_CONNECTED)
                     .build();
             GcmNetworkManager.getInstance(context).schedule(task);
         } else {
@@ -62,6 +64,7 @@ public class WeatherService extends GcmTaskService {
                     .setPeriod(UPDATE_INTERVAL)
                     .setUpdateCurrent(true)
                     .setPersisted(true)
+                    .setRequiredNetwork(Task.NETWORK_STATE_CONNECTED)
                     .build();
             GcmNetworkManager.getInstance(context).schedule(task);
         }
@@ -86,7 +89,7 @@ public class WeatherService extends GcmTaskService {
             loadWeatherData();
         } catch (Exception e) {
             running = false;
-            e.printStackTrace();
+            Log.e(TAG, "Exception on loadWeatherData",e);
         }
         while (running) {
             SystemClock.sleep(1000);
@@ -137,14 +140,18 @@ public class WeatherService extends GcmTaskService {
                                         if (!locationResult.getStatus().isSuccess()) {
                                             if (DEBUG) Log.d(TAG, "Could not get user location");
                                         } else {
-                                            TimeZone tz = TimeZone.getDefault();
-                                            Location location = new Location(locationResult.getLocation().getLatitude(), locationResult.getLocation().getLongitude());
-                                            SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(location, tz.getID());
-                                            Calendar officialSunset = calculator.getOfficialSunsetCalendarForDate(currentCalendar);
-                                            if (currentCalendar.getTimeInMillis() >= officialSunset.getTimeInMillis()) {
-                                                sunCondition = "n";
-                                            } else {
-                                                sunCondition = "d";
+                                            try{
+                                                TimeZone tz = TimeZone.getDefault();
+                                                Location location = new Location(locationResult.getLocation().getLatitude(), locationResult.getLocation().getLongitude());
+                                                SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(location, tz.getID());
+                                                Calendar officialSunset = calculator.getOfficialSunsetCalendarForDate(currentCalendar);
+                                                if (currentCalendar.getTimeInMillis() >= officialSunset.getTimeInMillis()) {
+                                                    sunCondition = "n";
+                                                } else {
+                                                    sunCondition = "d";
+                                                }
+                                            }catch (Exception e){
+                                                Log.e(TAG, "Exception when calculating sunset/sunrise",e);
                                             }
                                         }
                                         Weather weather = weatherResult.getWeather();
