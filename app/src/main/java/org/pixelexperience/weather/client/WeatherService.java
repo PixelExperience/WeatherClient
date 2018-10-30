@@ -67,7 +67,6 @@ public class WeatherService extends JobService {
             return false;
         }
         jobCancelled = true;
-        WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
         boolean needsReschedule = isRunning;
         jobFinished(jobParameters, needsReschedule);
         return needsReschedule;
