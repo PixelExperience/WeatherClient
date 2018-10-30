@@ -36,6 +36,7 @@ public class WeatherService extends JobService {
     private GoogleApiClient mGoogleApiClient;
     boolean isRunning = false;
     boolean jobCancelled = false;
+    int connectionAttempts;
 
     public static void scheduleUpdate(Context context, Boolean onBoot) {
         if (!Utils.isBuildValid()){
@@ -66,6 +67,7 @@ public class WeatherService extends JobService {
         if (!Utils.isBuildValid()){
             return false;
         }
+        connectionAttempts = 0;
         jobCancelled = true;
         boolean needsReschedule = isRunning;
         jobFinished(jobParameters, needsReschedule);
@@ -78,6 +80,7 @@ public class WeatherService extends JobService {
             return true;
         }
         if (DEBUG) Log.d(TAG, "onStartJob");
+        connectionAttempts = 0;
         isRunning = true;
         try{
             loadWeatherData(jobParameters);
@@ -111,10 +114,17 @@ public class WeatherService extends JobService {
                                             return;
                                         if (DEBUG) Log.d(TAG, "WeatherResult: onResult");
                                         if (!weatherResult.getStatus().isSuccess()) {
+                                            connectionAttempts++;
+                                            if (connectionAttempts <= MAX_CONNECTION_ATTEMPS){
+                                                if (DEBUG) Log.d(TAG, "Could not get weather, trying again (" + connectionAttempts + "/" + MAX_CONNECTION_ATTEMPS + ")");
+                                                loadWeatherData(jobParameters);
+                                                return;
+                                            }
                                             if (DEBUG) Log.d(TAG, "Could not get weather.");
                                             WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
                                             scheduleUpdate(WeatherService.this, false);
                                             isRunning = false;
+                                            connectionAttempts = 0;
                                             jobFinished(jobParameters, false);
                                             return;
                                         }
@@ -147,6 +157,7 @@ public class WeatherService extends JobService {
                                                 if (DEBUG) Log.d(TAG, weatherInfo.toString());
                                                 scheduleUpdate(WeatherService.this, false);
                                                 isRunning = false;
+                                                connectionAttempts = 0;
                                                 jobFinished(jobParameters, false);
                                             }
                                         });
@@ -158,10 +169,17 @@ public class WeatherService extends JobService {
                             public void onConnectionSuspended(int i) {
                                 if (jobCancelled)
                                     return;
+                                connectionAttempts++;
+                                if (connectionAttempts <= MAX_CONNECTION_ATTEMPS){
+                                    if (DEBUG) Log.d(TAG, "onConnectionSuspended, trying to reconnect (" + connectionAttempts + "/" + MAX_CONNECTION_ATTEMPS + ")");
+                                    loadWeatherData(jobParameters);
+                                    return;
+                                }
                                 if (DEBUG) Log.d(TAG, "onConnectionSuspended");
                                 WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
                                 scheduleUpdate(WeatherService.this, false);
                                 isRunning = false;
+                                connectionAttempts = 0;
                                 jobFinished(jobParameters, false);
                             }
                         })
