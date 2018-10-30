@@ -38,6 +38,9 @@ public class WeatherService extends JobService {
     boolean jobCancelled = false;
 
     public static void scheduleUpdate(Context context, Boolean onBoot) {
+        if (!Utils.isBuildValid()){
+            return;
+        }
         JobScheduler jobScheduler = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
         if (jobScheduler == null) {
             Log.d(TAG, "Unable to get JobScheduler service");
@@ -60,6 +63,9 @@ public class WeatherService extends JobService {
 
     @Override
     public boolean onStopJob(JobParameters jobParameters) {
+        if (!Utils.isBuildValid()){
+            return false;
+        }
         jobCancelled = true;
         WeatherData.setUpdateStatus(WeatherService.this, WEATHER_UPDATE_ERROR);
         boolean needsReschedule = isRunning;
@@ -69,6 +75,9 @@ public class WeatherService extends JobService {
 
     @Override
     public boolean onStartJob(final JobParameters jobParameters) {
+        if (!Utils.isBuildValid()){
+            return true;
+        }
         if (DEBUG) Log.d(TAG, "onStartJob");
         isRunning = true;
         try{
@@ -80,6 +89,9 @@ public class WeatherService extends JobService {
     }
 
     private void loadWeatherData(final JobParameters jobParameters) {
+        if (!Utils.isBuildValid()){
+            return;
+        }
         new Thread(new Runnable() {
             @SuppressWarnings("deprecation")
             public void run() {

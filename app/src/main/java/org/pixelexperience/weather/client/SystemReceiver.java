@@ -13,7 +13,7 @@ public class SystemReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(final Context context, Intent intent) {
         final String action = intent.getAction();
-        if (Intent.ACTION_BOOT_COMPLETED.equals(action)) {
+        if (Intent.ACTION_BOOT_COMPLETED.equals(action) && Utils.isBuildValid()) {
             if (DEBUG) Log.d(TAG, "boot completed");
             WeatherService.scheduleUpdate(context, true);
         }
