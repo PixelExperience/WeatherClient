@@ -2,6 +2,10 @@ package org.pixelexperience.weather.client;
 
 public class WeatherInfo {
 
+    public static final int WEATHER_UPDATE_SUCCESS = 0; // Success
+    public static final int WEATHER_UPDATE_RUNNING = 1; // Update running
+    public static final int WEATHER_UPDATE_ERROR = 2; // Error
+
     private int status;
     private String conditions;
     private int temperatureMetric;
