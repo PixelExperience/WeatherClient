@@ -51,6 +51,10 @@ public class WeatherContentProvider extends ContentProvider {
     private void resetVars() {
         connectionAttempts = 1;
         running = false;
+        try{
+            mGoogleApiClient.disconnect();
+        }catch (Exception ignored){
+        }
     }
 
     @Override
@@ -162,12 +166,12 @@ public class WeatherContentProvider extends ContentProvider {
         try {
             loadWeatherData();
         } catch (Exception e) {
-            resetVars();
             Log.e(TAG, "Exception on loadWeatherData", e);
         }
         while (running) {
             SystemClock.sleep(1000);
         }
+        resetVars();
 
         final MatrixCursor result = new MatrixCursor(PROJECTION_DEFAULT_WEATHER);
         if (weatherInfo != null) {
