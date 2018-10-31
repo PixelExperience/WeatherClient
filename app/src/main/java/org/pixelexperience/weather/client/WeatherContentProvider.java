@@ -32,7 +32,7 @@ import static org.pixelexperience.weather.client.WeatherInfo.WEATHER_UPDATE_RUNN
 import static org.pixelexperience.weather.client.WeatherInfo.WEATHER_UPDATE_SUCCESS;
 
 public class WeatherContentProvider extends ContentProvider {
-    private static final String TAG = "WeatherService:WeatherContentProvider";
+    private static final String TAG = "WeatherClient:WeatherContentProvider";
     private static final String COLUMN_STATUS = "status";
     private static final String COLUMN_CONDITIONS = "conditions";
     private static final String COLUMN_TEMPERATURE_METRIC = "temperatureMetric";
@@ -151,7 +151,8 @@ public class WeatherContentProvider extends ContentProvider {
             String[] selectionArgs,
             String sortOrder) {
 
-        if (!Utils.isBuildValid()) {
+        if (!Utils.isBuildValid(getContext())) {
+            Log.e(TAG, "It seems that you're not using PixelExperience. Please update your sources or in case of cherry-picking our stuff, please revert this and build your own WeatherClient.");
             return null;
         }
 

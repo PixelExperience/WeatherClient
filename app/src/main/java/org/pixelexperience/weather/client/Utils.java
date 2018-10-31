@@ -1,5 +1,8 @@
 package org.pixelexperience.weather.client;
 
+import android.content.Context;
+import android.content.pm.PackageManager;
+
 public class Utils {
     public static String getSystemProperty(String key, String defaultValue) {
         String value;
@@ -13,7 +16,11 @@ public class Utils {
         }
         return defaultValue;
     }
-    public static Boolean isBuildValid(){
+    public static Boolean isBuildValid(Context context){
+        PackageManager pm = context.getPackageManager();
+        if (pm != null && !pm.hasSystemFeature("org.pixelexperience.weather.client.SUPPORTED")) {
+            return false;
+        }
         if (getSystemProperty("org.pixelexperience.version","").isEmpty()) {
             return false;
         }
@@ -24,6 +31,9 @@ public class Utils {
             return false;
         }
         if (getSystemProperty("org.pixelexperience.fingerprint","").isEmpty()) {
+            return false;
+        }
+        if (getSystemProperty("org.pixelexperience.device","").isEmpty()) {
             return false;
         }
         return true;

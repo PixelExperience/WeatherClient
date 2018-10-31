@@ -4,6 +4,7 @@
     package="org.pixelexperience.weather.client">
 
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature android:name="org.pixelexperience.weather.client.SUPPORTED" android:required="true" />
 
     <permission
         android:name="org.pixelexperience.weather.client.READ_WEATHER"
