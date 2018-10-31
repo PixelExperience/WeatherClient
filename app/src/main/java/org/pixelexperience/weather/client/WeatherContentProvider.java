@@ -166,6 +166,7 @@ public class WeatherContentProvider extends ContentProvider {
         try {
             loadWeatherData();
         } catch (Exception e) {
+            resetVars();
             Log.e(TAG, "Exception on loadWeatherData", e);
         }
         while (running) {
