@@ -21,8 +21,11 @@ import com.google.android.gms.common.api.ResultCallback;
 import com.luckycatlabs.sunrisesunset.SunriseSunsetCalculator;
 import com.luckycatlabs.sunrisesunset.dto.Location;
 
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.Locale;
 import java.util.TimeZone;
 
 import static org.pixelexperience.weather.client.Constants.DEBUG;
@@ -51,9 +54,9 @@ public class WeatherContentProvider extends ContentProvider {
     private void resetVars() {
         connectionAttempts = 1;
         running = false;
-        try{
+        try {
             mGoogleApiClient.disconnect();
-        }catch (Exception ignored){
+        } catch (Exception ignored) {
         }
     }
 
@@ -94,25 +97,40 @@ public class WeatherContentProvider extends ContentProvider {
                                     @Override
                                     public void onResult(@NonNull LocationResult locationResult) {
                                         if (DEBUG) Log.d(TAG, "LocationResult: onResult");
-                                        Calendar currentCalendar = Calendar.getInstance();
+                                        Calendar currentCalendar = GregorianCalendar.getInstance();
                                         int currentHour = currentCalendar.get(Calendar.HOUR_OF_DAY);
                                         String sunCondition = (currentHour >= 7 && currentHour <= 18) ? "d" : "n";
                                         if (!locationResult.getStatus().isSuccess()) {
                                             if (DEBUG) Log.d(TAG, "Could not get user location");
                                         } else {
-                                            try {
-                                                TimeZone tz = TimeZone.getDefault();
-                                                Location location = new Location(locationResult.getLocation().getLatitude(), locationResult.getLocation().getLongitude());
-                                                SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(location, tz.getID());
-                                                Calendar officialSunrise = calculator.getOfficialSunriseCalendarForDate(currentCalendar);
-                                                Calendar officialSunset = calculator.getOfficialSunsetCalendarForDate(currentCalendar);
-                                                if (currentCalendar.getTimeInMillis() >= officialSunrise.getTimeInMillis() && currentCalendar.getTimeInMillis() < officialSunset.getTimeInMillis()) {
-                                                    sunCondition = "d";
-                                                } else {
-                                                    sunCondition = "n";
+                                            int sunriseSunsetRestApiResult = SunriseSunsetRestApi.queryApi(Double.toString(locationResult.getLocation().getLatitude()), Double.toString(locationResult.getLocation().getLongitude()));
+                                            if (sunriseSunsetRestApiResult == SunriseSunsetRestApi.RESULT_DAY) {
+                                                sunCondition = "d";
+                                            } else if (sunriseSunsetRestApiResult == SunriseSunsetRestApi.RESULT_NIGHT) {
+                                                sunCondition = "n";
+                                            } else {
+                                                try {
+                                                    TimeZone tz = TimeZone.getDefault();
+                                                    Location location = new Location(locationResult.getLocation().getLatitude(), locationResult.getLocation().getLongitude());
+                                                    SunriseSunsetCalculator calculator = new SunriseSunsetCalculator(location, tz.getID());
+                                                    Calendar officialSunrise = calculator.getOfficialSunriseCalendarForDate(currentCalendar);
+                                                    Calendar officialSunset = calculator.getOfficialSunsetCalendarForDate(currentCalendar);
+                                                    if (DEBUG) {
+                                                        Log.d("SunriseSunsetCalculator", "Current time is: " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(currentCalendar.getTime()));
+                                                        Log.d("SunriseSunsetCalculator", "Sunrise time is: " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(officialSunrise.getTime()));
+                                                        Log.d("SunriseSunsetCalculator", "Sunset time is: " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(officialSunset.getTime()));
+                                                    }
+                                                    if (currentCalendar.getTimeInMillis() >= officialSunrise.getTimeInMillis() && currentCalendar.getTimeInMillis() < officialSunset.getTimeInMillis()) {
+                                                        if (DEBUG) Log.d(TAG, "It's day");
+                                                        sunCondition = "d";
+                                                    } else {
+                                                        if (DEBUG) Log.d(TAG, "It's night");
+                                                        sunCondition = "n";
+                                                    }
+                                                } catch (Exception e) {
+                                                    if (DEBUG)
+                                                        Log.e(TAG, "Exception when calculating sunset/sunrise", e);
                                                 }
-                                            } catch (Exception e) {
-                                                Log.e(TAG, "Exception when calculating sunset/sunrise", e);
                                             }
                                         }
                                         Weather weather = weatherResult.getWeather();
