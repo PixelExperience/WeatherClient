@@ -210,7 +210,7 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         conditions.put("icon-thunderstorms", "thunderstorms");
         conditions.put("icon-foggy", "foggy");
         for (String condition : conditions.keySet()) {
-            if (toCompare.contains(condition)) {
+            if (toCompare.contains(condition + " ")) {
                 return conditions.get(condition);
             }
         }
