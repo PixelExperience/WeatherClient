@@ -18,27 +18,6 @@ public class WeatherInfo {
         this.temperatureImperial = temperatureImperial;
     }
 
-    static WeatherInfo fromSerializedString(String input) {
-        if (input == null) {
-            return null;
-        }
-
-        String[] parts = input.split("\\|");
-
-        int status;
-        String conditions;
-        int temperatureMetric;
-        int temperatureImperial;
-
-        // Parse the core data
-        status = Integer.parseInt(parts[0]);
-        conditions = parts[1];
-        temperatureMetric = Integer.parseInt(parts[2]);
-        temperatureImperial = Integer.parseInt(parts[3]);
-
-        return new WeatherInfo(status, conditions, temperatureMetric, temperatureImperial);
-    }
-
     int getTemperature(boolean metric) {
         return metric ? this.temperatureMetric : this.temperatureImperial;
     }
@@ -62,12 +41,5 @@ public class WeatherInfo {
                 "conditions=" + getConditions() + "," +
                 "temperatureMetric=" + getTemperature(true) + "," +
                 "temperatureImperial=" + getTemperature(false);
-    }
-
-    String toSerializedString() {
-        return String.valueOf(status) + '|' +
-                conditions + '|' +
-                getTemperature(true) + '|' +
-                getTemperature(false);
     }
 }

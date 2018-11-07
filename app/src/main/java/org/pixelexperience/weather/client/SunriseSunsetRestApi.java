@@ -1,5 +1,6 @@
 package org.pixelexperience.weather.client;
 
+import android.content.Context;
 import android.os.StrictMode;
 import android.util.Log;
 
@@ -7,12 +8,16 @@ import com.google.gson.Gson;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
+import java.io.File;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
+import okhttp3.Cache;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -24,14 +29,54 @@ class SunriseSunsetRestApi {
     public static int RESULT_FAILED = -1;
     public static int RESULT_DAY = 0;
     public static int RESULT_NIGHT = 1;
+    private Context mContext;
     private static String TAG = "SunriseSunsetRestApi";
 
-    public static int queryApi(String latitude, String longitude) {
+    public SunriseSunsetRestApi(Context context) {
+        mContext = context;
+    }
+
+    private final Interceptor REWRITE_RESPONSE_INTERCEPTOR = new Interceptor() {
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+            Response originalResponse = chain.proceed(chain.request());
+            String cacheControl = originalResponse.header("Cache-Control");
+            if (cacheControl == null || cacheControl.contains("no-store") || cacheControl.contains("no-cache") ||
+                    cacheControl.contains("must-revalidate") || cacheControl.contains("max-age=0")) {
+                return originalResponse.newBuilder()
+                        .header("Cache-Control", "public, max-age=" + 10)
+                        .build();
+            } else {
+                return originalResponse;
+            }
+        }
+    };
+
+    private final Interceptor OFFLINE_INTERCEPTOR = new Interceptor() {
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+            Request request = chain.request();
+            if (!(Utils.isNetworkAvailable(mContext))) {
+                request = request.newBuilder()
+                        .header("Cache-Control", "public, only-if-cached, max-stale=" + Constants.API_CACHE_NO_CONNECTION_MAX_TIME)
+                        .build();
+            }
+            return chain.proceed(request);
+        }
+    };
+
+    public int queryApi(String latitude, String longitude) {
         StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
         OkHttpClient httpClient = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .addNetworkInterceptor(REWRITE_RESPONSE_INTERCEPTOR)
+                .addInterceptor(OFFLINE_INTERCEPTOR)
+                .cache(new Cache(new File(mContext.getCacheDir(),
+                        "SunriseSunsetRestApiCache"), 10 * 1024 * 1024))
                 .build();
         try {
             Response response = httpClient.newCall(new Request.Builder()
@@ -50,7 +95,7 @@ class SunriseSunsetRestApi {
                     sunriseTime.setTime(new SimpleDateFormat(iso8601Pattern, Locale.getDefault()).parse(jsonResult.getResults().getSunrise()));
                     Calendar sunsetTime = GregorianCalendar.getInstance();
                     sunsetTime.setTime(new SimpleDateFormat(iso8601Pattern, Locale.getDefault()).parse(jsonResult.getResults().getSunset()));
-                    if (DEBUG){
+                    if (DEBUG) {
                         Log.d(TAG, "Current time is: " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(currentCalendar.getTime()));
                         Log.d(TAG, "Sunrise time is: " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(sunriseTime.getTime()));
                         Log.d(TAG, "Sunset time is: " + new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(sunsetTime.getTime()));

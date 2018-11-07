@@ -3,8 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="org.pixelexperience.weather.client">
 
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <uses-feature
         android:name="org.pixelexperience.weather.client.SUPPORTED"
@@ -26,10 +28,6 @@
             android:authorities="org.pixelexperience.weather.client.provider"
             android:exported="true"
             android:readPermission="org.pixelexperience.weather.client.READ_WEATHER" />
-
-        <meta-data
-            android:name="com.google.android.awareness.API_KEY"
-            android:value="@string/awareness_api_key" />
 
     </application>
 
