@@ -56,12 +56,12 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         @Override
         public void onLocationResult(LocationResult locationResult) {
             if (DEBUG) Log.d(TAG, "onLocationResult");
-            mHandler.removeCallbacks(removeLocationUpdatesRunnable);
             mFusedLocationClient.removeLocationUpdates(this);
             mLocationResult = locationResult;
             running = false;
         }
     };
+
     private Runnable removeLocationUpdatesRunnable = new Runnable() {
         @Override
         public void run() {
@@ -93,7 +93,8 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
     WeatherChannelApi(Context context) {
         running = false;
         mHandler = new Handler(Looper.getMainLooper());
-        mLocationRequest = new LocationRequest().setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        // power balanced location check (~100 mt precision)
+        mLocationRequest = new LocationRequest().setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
         mContext = context;
     }
@@ -258,8 +259,11 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         }
         running = true;
         mLocationResult = null;
+        // check location for max LOCATION_QUERY_MAX_TIME seconds
+        // and stop the check on the first location result
+        mLocationRequest.setExpirationDuration(Constants.LOCATION_QUERY_MAX_TIME)
+                .setNumUpdates(1);
         mFusedLocationClient.requestLocationUpdates(mLocationRequest, locationCallback, Looper.getMainLooper()).addOnCanceledListener(this).addOnFailureListener(this);
-        mHandler.postDelayed(removeLocationUpdatesRunnable, Constants.LOCATION_QUERY_MAX_TIME);
     }
 }
 
