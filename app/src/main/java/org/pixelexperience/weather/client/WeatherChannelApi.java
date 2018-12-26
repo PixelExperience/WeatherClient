@@ -167,9 +167,6 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
                     throw new Exception("tempImperial or conditionIconElementClassName is empty");
                 }
                 String parsedConditions = parseCondition(conditionIconElement.className());
-                if (Utils.getSystemRevision().equals("1")) {
-                    parsedConditions = parseConditionLegacy(parsedConditions);
-                }
                 int tempMetric = (int) Math.round((Integer.valueOf(tempImperial) - 32.0) * 5 / 9);
                 if (DEBUG)
                     Log.d(TAG, "tempImperial: " + tempImperial + " tempMetric: " + tempMetric + " parsedConditions: " + parsedConditions);
@@ -252,37 +249,6 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
             }
         }
         return sunCondition;
-    }
-
-    private String parseConditionLegacy(String newCondition) {
-        if (DEBUG) Log.d(TAG, "parseCondition: newCondition: " + newCondition);
-        Map<String, String> conditions = new HashMap<>();
-        conditions.put("partly-cloudy", "d,2");
-        conditions.put("partly-cloudy-night", "n,2");
-        conditions.put("mostly-cloudy", "d,0");
-        conditions.put("mostly-cloudy-night", "n,0");
-        conditions.put("clear-night", "n,1");
-        conditions.put("mostly-clear-night", "n,12");
-        conditions.put("sunny", "d,1");
-        conditions.put("mostly-sunny", "d,12");
-        conditions.put("scattered-showers", "d,6");
-        conditions.put("scattered-showers-night", "n,6");
-        conditions.put("rain", "d,6");
-        conditions.put("snow", "d,57");
-        conditions.put("scattered-thunderstorms", "d,8");
-        conditions.put("scattered-thunderstorms-night", "n,8");
-        conditions.put("isolated-thunderstorms", "d,8");
-        conditions.put("isolated-thunderstorms-night", "n,8");
-        conditions.put("thunderstorms", "d,8");
-        conditions.put("foggy", "d,34");
-        conditions.put("windy", mSunCondition + ",0");
-        conditions.put("cloudy", mSunCondition + ",0");
-        for (String condition : conditions.keySet()) {
-            if (newCondition.equals(condition)) {
-                return conditions.get(condition);
-            }
-        }
-        return mSunCondition + ",0";
     }
 
     @SuppressLint("MissingPermission")

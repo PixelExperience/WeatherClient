@@ -50,8 +50,4 @@ public class Utils {
         }
         return true;
     }
-
-    public static String getSystemRevision() {
-        return getSystemProperty("org.pixelexperience.weather.revision", "1");
-    }
 }
