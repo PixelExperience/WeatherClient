@@ -147,6 +147,7 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
                 .followRedirects(false)
                 .followSslRedirects(false)
                 .addNetworkInterceptor(REWRITE_RESPONSE_INTERCEPTOR)
+                .addInterceptor(new Utils.GzipRequestInterceptor())
                 .addInterceptor(OFFLINE_INTERCEPTOR)
                 .cache(new Cache(new File(mContext.getCacheDir(),
                         "WeatherChannelApiCache"), 10 * 1024 * 1024))
