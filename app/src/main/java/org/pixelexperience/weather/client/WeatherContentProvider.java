@@ -44,7 +44,9 @@ public class WeatherContentProvider extends ContentProvider {
         }
 
         if (DEBUG) Log.i(TAG, "query: " + uri.toString());
-        mWeatherChannelApi = new WeatherChannelApi(getContext());
+        if (mWeatherChannelApi == null) {
+            mWeatherChannelApi = new WeatherChannelApi(getContext());
+        }
         mWeatherChannelApi.queryLocation();
         while (mWeatherChannelApi.isRunning()) {
             try {

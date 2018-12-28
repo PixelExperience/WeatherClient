@@ -51,6 +51,8 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
     private LocationRequest mLocationRequest;
     private Context mContext;
     private String mSunCondition;
+    private OkHttpClient mHttpClient;
+    private SunriseSunsetRestApi mSunriseSunsetRestApi;
 
     private LocationCallback locationCallback = new LocationCallback() {
         @Override
@@ -94,9 +96,23 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         running = false;
         mHandler = new Handler(Looper.getMainLooper());
         // power balanced location check (~100 mt precision)
-        mLocationRequest = new LocationRequest().setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+        mLocationRequest = new LocationRequest().setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY).create();
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
         mContext = context;
+        final File cacheFile = new File(mContext.getCacheDir(), "WeatherChannelApiCache");
+        final Cache cache = new Cache(cacheFile, 10 * 1024 * 1024);
+        mHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .addNetworkInterceptor(REWRITE_RESPONSE_INTERCEPTOR)
+                .addInterceptor(new Utils.GzipRequestInterceptor())
+                .addInterceptor(OFFLINE_INTERCEPTOR)
+                .cache(cache)
+                .build();
+        mSunriseSunsetRestApi = new SunriseSunsetRestApi(mContext);
     }
 
     boolean isRunning() {
@@ -140,20 +156,9 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         if (DEBUG) Log.d(TAG, "getResult");
         if (DEBUG)
             Log.d(TAG, "latitude=" + location.getLatitude() + ",longitude=" + location.getLongitude());
-        OkHttpClient httpClient = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .followRedirects(false)
-                .followSslRedirects(false)
-                .addNetworkInterceptor(REWRITE_RESPONSE_INTERCEPTOR)
-                .addInterceptor(new Utils.GzipRequestInterceptor())
-                .addInterceptor(OFFLINE_INTERCEPTOR)
-                .cache(new Cache(new File(mContext.getCacheDir(),
-                        "WeatherChannelApiCache"), 10 * 1024 * 1024))
-                .build();
+
         try {
-            Response response = httpClient.newCall(new Request.Builder()
+            Response response = mHttpClient.newCall(new Request.Builder()
                     .tag("WeatherChannelApi")
                     .url("https://weather.com/weather/today/l/" + location.getLatitude() + "," + location.getLongitude() + "?par=google")
                     .build()).execute();
@@ -220,8 +225,7 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         Calendar currentCalendar = GregorianCalendar.getInstance();
         int currentHour = currentCalendar.get(Calendar.HOUR_OF_DAY);
         String sunCondition = (currentHour >= 7 && currentHour <= 18) ? "d" : "n";
-        SunriseSunsetRestApi sunriseSunsetRestApi = new SunriseSunsetRestApi(mContext);
-        int sunriseSunsetRestApiResult = sunriseSunsetRestApi.queryApi(Double.toString(latitude), Double.toString(longitude));
+        int sunriseSunsetRestApiResult = mSunriseSunsetRestApi.queryApi(Double.toString(latitude), Double.toString(longitude));
         if (sunriseSunsetRestApiResult == SunriseSunsetRestApi.RESULT_DAY) {
             sunCondition = "d";
         } else if (sunriseSunsetRestApiResult == SunriseSunsetRestApi.RESULT_NIGHT) {
@@ -263,7 +267,7 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         // check location for max LOCATION_QUERY_MAX_TIME seconds
         // and stop the check on the first location result
         mLocationRequest.setExpirationDuration(Constants.LOCATION_QUERY_MAX_TIME)
-                .setNumUpdates(1);
+                .setNumUpdates(1).setInterval(4000).setFastestInterval(2000);
         mFusedLocationClient.requestLocationUpdates(mLocationRequest, locationCallback, Looper.getMainLooper()).addOnCanceledListener(this).addOnFailureListener(this);
     }
 }

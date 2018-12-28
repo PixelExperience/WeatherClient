@@ -32,8 +32,23 @@ class SunriseSunsetRestApi {
     private Context mContext;
     private static String TAG = "SunriseSunsetRestApi";
 
+    private OkHttpClient mHttpClient;
+
     public SunriseSunsetRestApi(Context context) {
         mContext = context;
+        final File cacheFile = new File(mContext.getCacheDir(), "SunriseSunsetRestApiCache");
+        final Cache cache = new Cache(cacheFile, 10 * 1024 * 1024);
+        mHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .addNetworkInterceptor(REWRITE_RESPONSE_INTERCEPTOR)
+                .addInterceptor(new Utils.GzipRequestInterceptor())
+                .addInterceptor(OFFLINE_INTERCEPTOR)
+                .cache(cache)
+                .build();
     }
 
     private final Interceptor REWRITE_RESPONSE_INTERCEPTOR = new Interceptor() {
@@ -67,20 +82,9 @@ class SunriseSunsetRestApi {
 
     public int queryApi(String latitude, String longitude) {
         StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder().permitAll().build());
-        OkHttpClient httpClient = new OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .writeTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .followRedirects(false)
-                .followSslRedirects(false)
-                .addNetworkInterceptor(REWRITE_RESPONSE_INTERCEPTOR)
-                .addInterceptor(new Utils.GzipRequestInterceptor())
-                .addInterceptor(OFFLINE_INTERCEPTOR)
-                .cache(new Cache(new File(mContext.getCacheDir(),
-                        "SunriseSunsetRestApiCache"), 10 * 1024 * 1024))
-                .build();
+
         try {
-            Response response = httpClient.newCall(new Request.Builder()
+            Response response = mHttpClient.newCall(new Request.Builder()
                     .tag("SunsetSunriseApi")
                     .url("https://api.sunrise-sunset.org/json?formatted=0&lat=" + latitude + "&lng=" + longitude)
                     .build()).execute();
