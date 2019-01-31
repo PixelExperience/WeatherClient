@@ -7,8 +7,9 @@ import android.database.MatrixCursor;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.os.Process;
 
-import static org.pixelexperience.weather.client.Constants.DEBUG;
+import static org.pixelexperience.weather.client.BuildConfig.DEBUG;
 
 public class WeatherContentProvider extends ContentProvider {
     private static final String TAG = "WeatherClient:WeatherContentProvider";
@@ -48,15 +49,20 @@ public class WeatherContentProvider extends ContentProvider {
             mWeatherChannelApi = new WeatherChannelApi(getContext());
         }
         mWeatherChannelApi.queryLocation();
+        int runningSeconds = 0;
         while (mWeatherChannelApi.isRunning()) {
+            if (runningSeconds >= 60) {
+                Process.killProcess(android.os.Process.myPid());
+            }
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+            runningSeconds++;
         }
         WeatherInfo weatherInfo = mWeatherChannelApi.getResult();
-        if (DEBUG) Log.d(TAG,weatherInfo.toString());
+        if (DEBUG) Log.d(TAG, weatherInfo.toString());
         final MatrixCursor result = new MatrixCursor(PROJECTION_DEFAULT_WEATHER);
         if (weatherInfo != null) {
             result.newRow()

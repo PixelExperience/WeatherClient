@@ -22,7 +22,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-import static org.pixelexperience.weather.client.Constants.DEBUG;
+import static org.pixelexperience.weather.client.BuildConfig.DEBUG;
 
 class SunriseSunsetRestApi {
 
