@@ -53,6 +53,7 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
     private String mSunCondition;
     private OkHttpClient mHttpClient;
     private SunriseSunsetRestApi mSunriseSunsetRestApi;
+    private final Map<String, String> conditions = new HashMap<>();
 
     private LocationCallback locationCallback = new LocationCallback() {
         @Override
@@ -113,6 +114,26 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
                 .cache(cache)
                 .build();
         mSunriseSunsetRestApi = new SunriseSunsetRestApi(mContext);
+        conditions.put("icon-partly-cloudy", "partly-cloudy");
+        conditions.put("icon-partly-cloudy-night", "partly-cloudy-night");
+        conditions.put("icon-mostly-cloudy", "mostly-cloudy");
+        conditions.put("icon-mostly-cloudy-night", "mostly-cloudy-night");
+        conditions.put("icon-cloudy", "cloudy");
+        conditions.put("icon-clear-night", "clear-night");
+        conditions.put("icon-mostly-clear-night", "mostly-clear-night");
+        conditions.put("icon-sunny", "sunny");
+        conditions.put("icon-mostly-sunny", "mostly-sunny");
+        conditions.put("icon-isolated-showers", "rain");
+        conditions.put("icon-showers", "rain");
+        conditions.put("icon-rain", "rain");
+        conditions.put("icon-wind", "windy");
+        conditions.put("icon-snow", "snow");
+        conditions.put("icon-rain-snow", "snow");
+        conditions.put("icon-scattered-snow", "snow");
+        conditions.put("icon-isolated-snow", "snow");
+        conditions.put("icon-freezing-drizzle", "snow");
+        conditions.put("icon-thunderstorms", "thunderstorms");
+        conditions.put("icon-foggy", "foggy");
     }
 
     boolean isRunning() {
@@ -189,35 +210,13 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         String nightFix = mSunCondition.equals("n") ? "-night" : "";
         if (DEBUG)
             Log.d(TAG, "parseCondition: toCompare: " + toCompare + " nightFix: " + nightFix);
-        Map<String, String> conditions = new HashMap<>();
-        conditions.put("icon-partly-cloudy", "partly-cloudy");
-        conditions.put("icon-partly-cloudy-night", "partly-cloudy-night");
-        conditions.put("icon-mostly-cloudy", "mostly-cloudy");
-        conditions.put("icon-mostly-cloudy-night", "mostly-cloudy-night");
-        conditions.put("icon-cloudy", "cloudy");
-        conditions.put("icon-clear-night", "clear-night");
-        conditions.put("icon-mostly-clear-night", "mostly-clear-night");
-        conditions.put("icon-sunny", "sunny");
-        conditions.put("icon-mostly-sunny", "mostly-sunny");
-        conditions.put("icon-scattered-showers", "scattered-showers" + nightFix);
-        conditions.put("icon-isolated-showers", "rain");
-        conditions.put("icon-showers", "rain");
-        conditions.put("icon-rain", "rain");
-        conditions.put("icon-wind", "windy");
-        conditions.put("icon-snow", "snow");
-        conditions.put("icon-rain-snow", "snow");
-        conditions.put("icon-scattered-snow", "snow");
-        conditions.put("icon-isolated-snow", "snow");
-        conditions.put("icon-freezing-drizzle", "snow");
-        conditions.put("icon-scattered-thunderstorms", "scattered-thunderstorms" + nightFix);
-        conditions.put("icon-isolated-thunderstorms", "isolated-thunderstorms" + nightFix);
-        conditions.put("icon-thunderstorms", "thunderstorms");
-        conditions.put("icon-foggy", "foggy");
-        for (String condition : conditions.keySet()) {
-            if (toCompare.contains(condition + " ")) {
-                return conditions.get(condition);
-            }
-        }
+        final Map<String, String> localConditionsMap = new HashMap<>();
+        localConditionsMap.putAll(conditions);
+        localConditionsMap.put("icon-scattered-showers", "scattered-showers" + nightFix);
+        localConditionsMap.put("icon-scattered-thunderstorms", "scattered-thunderstorms" + nightFix);
+        localConditionsMap.put("icon-isolated-thunderstorms", "isolated-thunderstorms" + nightFix);
+        if (localConditionsMap.containsKey(toCompare))
+            return localConditionsMap.get(toCompare);
         return "mostly-cloudy" + nightFix;
     }
 
