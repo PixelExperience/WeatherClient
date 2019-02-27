@@ -1,5 +1,6 @@
 package org.pixelexperience.weather.client;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
@@ -16,9 +17,9 @@ import okio.BufferedSink;
 import okio.GzipSink;
 import okio.Okio;
 
-public class Utils {
+class Utils {
 
-    public static boolean isNetworkAvailable(Context context) {
+    static boolean isNetworkAvailable(Context context) {
         ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = cm.getActiveNetworkInfo();
         // if no network is available networkInfo will be null
@@ -26,40 +27,38 @@ public class Utils {
         return networkInfo != null && networkInfo.isConnected();
     }
 
-    public static String getSystemProperty(String key, String defaultValue) {
+    @SuppressLint("PrivateApi")
+    private static String getSystemProperty(String key) {
         String value;
 
         try {
             value = (String) Class.forName("android.os.SystemProperties")
                     .getMethod("get", String.class).invoke(null, key);
-            return (value == null || value.isEmpty()) ? defaultValue : value;
+            return (value == null || value.isEmpty()) ? "" : value;
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return defaultValue;
+        return "";
     }
 
-    public static Boolean isBuildValid(Context context) {
+    static Boolean isBuildValid(Context context) {
         PackageManager pm = context.getPackageManager();
         if (pm != null && !pm.hasSystemFeature("org.pixelexperience.weather.client.SUPPORTED")) {
             return false;
         }
-        if (getSystemProperty("org.pixelexperience.version", "").isEmpty()) {
+        if (getSystemProperty("org.pixelexperience.version").isEmpty()) {
             return false;
         }
-        if (getSystemProperty("org.pixelexperience.build_date", "").isEmpty()) {
+        if (getSystemProperty("org.pixelexperience.build_date").isEmpty()) {
             return false;
         }
-        if (getSystemProperty("org.pixelexperience.build_type", "").isEmpty()) {
+        if (getSystemProperty("org.pixelexperience.build_type").isEmpty()) {
             return false;
         }
-        if (getSystemProperty("org.pixelexperience.fingerprint", "").isEmpty()) {
+        if (getSystemProperty("org.pixelexperience.fingerprint").isEmpty()) {
             return false;
         }
-        if (getSystemProperty("org.pixelexperience.device", "").isEmpty()) {
-            return false;
-        }
-        return true;
+        return !getSystemProperty("org.pixelexperience.device").isEmpty();
     }
 
     public static class GzipRequestInterceptor implements Interceptor {

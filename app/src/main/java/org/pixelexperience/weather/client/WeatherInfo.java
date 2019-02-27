@@ -1,10 +1,11 @@
 package org.pixelexperience.weather.client;
 
+import android.support.annotation.NonNull;
+
 public class WeatherInfo {
 
-    public static final int WEATHER_UPDATE_SUCCESS = 0; // Success
-    public static final int WEATHER_UPDATE_RUNNING = 1; // Update running
-    public static final int WEATHER_UPDATE_ERROR = 2; // Error
+    static final int WEATHER_UPDATE_SUCCESS = 0; // Success
+    static final int WEATHER_UPDATE_ERROR = 2; // Error
 
     private int status;
     private String conditions;
@@ -26,14 +27,11 @@ public class WeatherInfo {
         return this.status;
     }
 
-    void setStatus(int status) {
-        this.status = status;
-    }
-
     String getConditions() {
         return this.conditions;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "WeatherInfo: " +
