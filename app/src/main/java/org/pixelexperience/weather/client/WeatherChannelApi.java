@@ -215,8 +215,11 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         localConditionsMap.put("icon-scattered-showers", "scattered-showers" + nightFix);
         localConditionsMap.put("icon-scattered-thunderstorms", "scattered-thunderstorms" + nightFix);
         localConditionsMap.put("icon-isolated-thunderstorms", "isolated-thunderstorms" + nightFix);
-        if (localConditionsMap.containsKey(toCompare))
-            return localConditionsMap.get(toCompare);
+        for (String condition : localConditionsMap.keySet()) {
+            if (toCompare.contains(condition + " ")) {
+                return localConditionsMap.get(condition);
+            }
+        }
         return "mostly-cloudy" + nightFix;
     }
 
