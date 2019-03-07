@@ -89,6 +89,7 @@ public class WeatherChannelApi implements OnFailureListener, OnCanceledListener 
         mHandler = new Handler(Looper.getMainLooper());
         // power balanced location check (~100 mt precision)
         mLocationRequest = LocationRequest.create();
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(context);
         mContext = context;
         final File cacheFile = new File(mContext.getCacheDir(), "WeatherChannelApiCacheV2");
